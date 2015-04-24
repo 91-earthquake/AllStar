@@ -93,9 +93,18 @@ float getJoystickAngle(int x, int y, float rate)
 }
 
 
-float getJoystickSpeed(int y)
+float getJoystickSpeed(int y, bool turbo)
 {
-	float	speed = (float) (y /127.0) * 100;
+
+	float	speed = (float) (y /127.0);//100;
+	if(turbo)
+	{
+		speed = speed * 75;
+	}
+	else
+	{
+		speed = speed * 35;
+	}
 	if (speed < 0)
 	{
 		speed = 0;
