@@ -1,6 +1,6 @@
 #pragma config(Hubs,  S1, MatrxRbtcs, none,     none,     none)
-#pragma config(Sensor, S1,     ,               sensorI2CMuxController)
 #pragma config(Sensor, S2,     gyro,           sensorI2CHiTechnicGyro)
+#pragma config(Sensor, S4,     HTSMUX,              sensorI2CCustom)
 #pragma config(Motor,  mtr_Matrix_S1_1, motorB,        tmotorMatrix, openLoop, reversed)
 #pragma config(Motor,  mtr_Matrix_S1_2, motorA,        tmotorMatrix, openLoop)
 #pragma config(Motor,  mtr_Matrix_S1_3, motorC,        tmotorMatrix, openLoop, reversed)
@@ -18,9 +18,18 @@
 // Include the joystick driver
 #include "JoystickDriver.c"
 #include "omni_control.c"
+#include "drivers/hitechnic-sensormux.h"
+#include "drivers/hitechnic-irseeker-v2.h"
+
+const tMUXSensor irSeeker1 = msensor_S4_1;
+const tMUXSensor irSeeker2 = msensor_S4_2;
+
+void displayText(int nLineNumber, const string cChar, int nValueDC, int nValueAC);
+bool goToBeacon();
 
 //Globale variabele
 float currHeading;
+string sTextLines[8];
 //De afwijking van de gyro sensor
 int offset = 598;
 
@@ -53,19 +62,73 @@ task getHeading () {
 
 task main()
 {
-//	setLEDColor(ledRedPulse);
+	 stopTask(displayDiagnostics);
+   eraseDisplay();
 	startTask(getHeading);
 	while (true)
 		{
-			eraseDisplay();
+
 			getJoystickSettings(joystick);
 			float rate = currHeading;
-
 			setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
 			if (joy1Btn(1))
 			{
 				currHeading = 0;
 				playImmediateTone(1750, 1);
 			}
+			
+			while(!goToBeacon())
+		{				
+			wait1Msec(1);
+		}
 	}
+}
+
+// Minimize LCD screen flicker by only updating LCD when data has changed
+void displayText(int nLineNumber, const string cChar, int nValueDC, int nValueAC)
+{
+  string sTemp;
+
+  StringFormat(sTemp, "%4d  %4d", nValueDC, nValueAC);
+  // Check if the new line is the same as the previous one
+  // Only update screen if it's different.
+  if (sTemp != sTextLines[nLineNumber])
+  {
+    string sTemp2;
+
+    sTextLines[nLineNumber] = sTemp;
+    StringFormat(sTemp2, "%s:  %s", cChar, sTemp);
+    nxtDisplayTextLine(nLineNumber, sTemp2);
+  }
+}
+
+bool goToBeacon()
+{
+	static bool hasBeaconFound = false;
+	
+	int irsens1 = HTIRS2readDCDir(irSeeker2);
+	int irsens2 = HTIRS2readACDir(irSeeker1);
+
+	displayText(1, "D", irsens1, irsens2);
+	bool returnValue = false;
+ 	if (irsens1 != 5)
+	{
+		if (irsens1 < 5 ) // Turn Left
+		{
+			setMotor(0, 20, true,false);
+		} 	else if (irsens1 > 5)
+ 		{
+			setMotor(0, 20, false,true);
+		}
+	}
+	else
+	{
+		setMotor(0, 30, false,false);
+		hasBeaconFound = true;
+	}
+	if (hasBeaconFound && (irsens1 == 0))
+		{
+			returnValue =  true;
+		}
+	return returnValue;
 }
