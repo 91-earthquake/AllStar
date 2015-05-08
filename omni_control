@@ -1,6 +1,6 @@
 float getRatio(float angle, char ratio);
 float getJoystickAngle(int x, int y, float rate);
-float getJoystickSpeed(int y);
+float getJoystickSpeed(int y, bool turbo);
 bool setMotor(float angle, float speed, bool left , bool right);
 
 
