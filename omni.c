@@ -22,7 +22,7 @@
 //Globale variabele
 float currHeading;
 //De afwijking van de gyro sensor
-int offset = 598;	
+int offset = 598;
 
 task getHeading () {
 	float delTime = 0;
@@ -38,7 +38,7 @@ task getHeading () {
     if (abs(curRate) > 3) {
     	//De vorige hoek wordt de hudige hoek
       prevHeading = currHeading;
-      //De nieuwe hoek wordt de vorige hoek + de snelheid (currate) * de tijd 
+      //De nieuwe hoek wordt de vorige hoek + de snelheid (currate) * de tijd
       currHeading = prevHeading + curRate * delTime;
       //Zorg dat de hoek tussen 0 en 360 gragen blijft
       if (currHeading > 360) currHeading -= 360;
@@ -59,9 +59,9 @@ task main()
 		{
 			eraseDisplay();
 			getJoystickSettings(joystick);
-			float rate = 0;//currHeading;
+			float rate = currHeading;
 
-			setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2), joy1Btn(7),joy1Btn(8));
+			setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
 			if (joy1Btn(1))
 			{
 				currHeading = 0;
