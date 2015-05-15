@@ -7,7 +7,7 @@ bool setMotor(float angle, float speed, bool left , bool right);
 bool setMotor(float angle, float speed, bool left , bool right)
 {
 	displayTextLine(4,"Versie 0.0.0.2");
-	if ((left) && (!right))
+/*	if ((left) && (!right))
 	{
 		motor[motorA] = getRatio(angle, 'A') * speed;
 		motor[motorB] = speed;
@@ -44,8 +44,8 @@ bool setMotor(float angle, float speed, bool left , bool right)
 			motor[motorB] = getRatio(angle, 'C') * speed ;
 		}
 		motor[motorD] = speed;
-	}
-	/*
+	}*/
+	
 	if ((left) && (!right))
 	{
 		motor[motorA] = -1 * speed;
@@ -60,7 +60,7 @@ bool setMotor(float angle, float speed, bool left , bool right)
 		motor[motorC] = -1 * speed;
 		motor[motorD] = speed;
 	}
-	 */
+	 
 	else
 	{
 		motor[motorA] = getRatio(angle, 'A') * speed;
