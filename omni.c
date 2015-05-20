@@ -20,12 +20,15 @@
 #include "omni_control.c"
 #include "drivers/hitechnic-sensormux.h"
 #include "drivers/hitechnic-irseeker-v2.h"
+#include "drivers/hitechnic-colour-v2.h"
 
-const tMUXSensor irSeeker1 = msensor_S4_1;
-const tMUXSensor irSeeker2 = msensor_S4_2;
-
+const tMUXSensor ColorSensor1 = msensor_S4_1;
+const tMUXSensor ColorSensor2 = msensor_S4_2;
+const tMUXSensor ColorSensor3 = msensor_S4_3;
+const tMUXSensor ColorSensor4 = msensor_S4_4;
 void displayText(int nLineNumber, const string cChar, int nValueDC, int nValueAC);
 bool goToBeacon();
+bool followLine();
 
 //Globale variabele
 float currHeading;
@@ -33,53 +36,56 @@ string sTextLines[8];
 //De afwijking van de gyro sensor
 int offset = 598;
 
-task getHeading () {
+task getHeading()
+{
 	float delTime = 0;
 	float prevHeading = 0;
 	float curRate = 0;
 
-  while (true) {
-  	//We starten een klok
-    time1[T1] = 0;
-    //De huidige snelheid van de hoek meten
-    curRate = SensorValue[gyro] - offset;
-    //Als de huidige snelheid groter is dan 3 graden / seconde
-    if (abs(curRate) > 3) {
-    	//De vorige hoek wordt de hudige hoek
-      prevHeading = currHeading;
-      //De nieuwe hoek wordt de vorige hoek + de snelheid (currate) * de tijd
-      currHeading = prevHeading + curRate * delTime;
-      //Zorg dat de hoek tussen 0 en 360 gragen blijft
-      if (currHeading > 360) currHeading -= 360;
-      else if (currHeading < 0) currHeading += 360;
-    }
-    //Wachten 5 ms
-    wait1Msec(5);
-    //Bereken het verschil in tijd, ten opzichte van de vorige meting
-    delTime = ((float)time1[T1]) / 1000;
-  }
+	while (true) {
+		//We starten een klok
+		time1[T1] = 0;
+		//De huidige snelheid van de hoek meten
+		curRate = SensorValue[gyro] - offset;
+		//Als de huidige snelheid groter is dan 3 graden / seconde
+		if (abs(curRate) > 3) {
+			//De vorige hoek wordt de hudige hoek
+			prevHeading = currHeading;
+			//De nieuwe hoek wordt de vorige hoek + de snelheid (curRate) * de tijd
+			currHeading = prevHeading + curRate * delTime;
+			//Zorg dat de hoek tussen 0 en 360 gragen blijft
+			if (currHeading > 360) currHeading -= 360;
+			else if (currHeading < 0) currHeading += 360;
+		}
+		//Wachten 5 ms
+		wait1Msec(5);
+		//Bereken het verschil in tijd, ten opzichte van de vorige meting
+		delTime = ((float)time1[T1]) / 1000;
+	}
 }
 
 task main()
 {
-	 stopTask(displayDiagnostics);
-   eraseDisplay();
+  stopTask(displayDiagnostics);
+	eraseDisplay();
 	startTask(getHeading);
 	while (true)
-		{
+	{
+		getJoystickSettings(joystick);
+		float rate = currHeading;
 
-			getJoystickSettings(joystick);
-			float rate = currHeading;
-			setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
-			if (joy1Btn(1))
-			{
-				currHeading = 0;
-				playImmediateTone(1750, 1);
-			}
-			
-			while(!goToBeacon())
-		{				
-			wait1Msec(1);
+		
+		
+		setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
+		if (joy1Btn(1))
+		{
+			currHeading = 0;
+			playImmediateTone(1750, 1);
+		}
+
+		while(1)
+		{
+			followLine();
 		}
 	}
 }
@@ -87,37 +93,38 @@ task main()
 // Minimize LCD screen flicker by only updating LCD when data has changed
 void displayText(int nLineNumber, const string cChar, int nValueDC, int nValueAC)
 {
-  string sTemp;
+	string sTemp;
 
-  StringFormat(sTemp, "%4d  %4d", nValueDC, nValueAC);
-  // Check if the new line is the same as the previous one
-  // Only update screen if it's different.
-  if (sTemp != sTextLines[nLineNumber])
-  {
-    string sTemp2;
+	StringFormat(sTemp, "%4d  %4d", nValueDC, nValueAC);
+	// Check if the new line is the same as the previous one
+	// Only update screen if it's different.
+	if (sTemp != sTextLines[nLineNumber])
+	{
+		string sTemp2;
 
-    sTextLines[nLineNumber] = sTemp;
-    StringFormat(sTemp2, "%s:  %s", cChar, sTemp);
-    nxtDisplayTextLine(nLineNumber, sTemp2);
-  }
+		sTextLines[nLineNumber] = sTemp;
+		StringFormat(sTemp2, "%s:  %s", cChar, sTemp);
+		nxtDisplayTextLine(nLineNumber, sTemp2);
+	}
 }
 
 bool goToBeacon()
 {
-	static bool hasBeaconFound = false;
-	
+		bool returnValue = false;
+/*	static bool hasBeaconFound = false;
+
 	int irsens1 = HTIRS2readDCDir(irSeeker2);
 	int irsens2 = HTIRS2readACDir(irSeeker1);
 
 	displayText(1, "D", irsens1, irsens2);
-	bool returnValue = false;
- 	if (irsens1 != 5)
+
+	if (irsens1 != 5)
 	{
 		if (irsens1 < 5 ) // Turn Left
 		{
 			setMotor(0, 20, true,false);
-		} 	else if (irsens1 > 5)
- 		{
+		} else if (irsens1 > 5)
+		{
 			setMotor(0, 20, false,true);
 		}
 	}
@@ -127,8 +134,93 @@ bool goToBeacon()
 		hasBeaconFound = true;
 	}
 	if (hasBeaconFound && (irsens1 == 0))
-		{
-			returnValue =  true;
-		}
+	{
+		returnValue =  true;
+	}*/
 	return returnValue;
+}
+
+bool followLine()
+{
+	// In Robot = -------S1-S2-S3-S4---------
+	int red = 0;
+  int green = 0;
+  int blueS1 = 0;
+  int blueS2 = 0;
+  int blueS3 = 0;
+  int blueS4 = 0;
+ 	int _colorS1 = 0;
+ 	int _colorS2 = 0;
+ 	int _colorS3 = 0;
+ 	int _colorS4 = 0;
+  string _tmp;
+  
+  _colorS1 = HTCS2readColor(ColorSensor1);
+  _colorS2 = HTCS2readColor(ColorSensor2);
+  _colorS3 = HTCS2readColor(ColorSensor3);
+  _colorS4 = HTCS2readColor(ColorSensor4);
+
+
+  // A return value of false imples an error has occurred
+  if (!HTCS2readRGB(ColorSensor1, red, green, blueS1)) {
+  		nxtDisplayTextLine(4, "ERROR!!");
+      wait1Msec(2000);
+      StopAllTasks();
+  		}
+  		  // A return value of false imples an error has occurred
+  if (!HTCS2readRGB(ColorSensor2, red, green, blueS2)) {
+  		nxtDisplayTextLine(4, "ERROR!!");
+      wait1Msec(2000);
+      StopAllTasks();
+  		}
+  		  // A return value of false imples an error has occurred
+  if (!HTCS2readRGB(ColorSensor3, red, green, blueS3)) {
+  		nxtDisplayTextLine(4, "ERROR!!");
+      wait1Msec(2000);
+      StopAllTasks();
+  		}
+  		  // A return value of false imples an error has occurred
+  if (!HTCS2readRGB(ColorSensor4, red, green, blueS4)) {
+  		nxtDisplayTextLine(4, "ERROR!!");
+      wait1Msec(2000);
+      StopAllTasks();
+  		}
+  //Blue line in not in middle of sensor
+ // if (( blueS1 || blueS4) > ((blueS2 || blueS3))
+  //{
+  //	if ((blueS2 && blueS3) > (blueS1 || blueS4))
+  	//{
+  		if ((blueS1 > blueS2) && (blueS1 > 50))
+  		{
+  			setMotor(0, 10, true,false);
+  			nxtDisplayTextLine(2, "Links!!");
+  		}
+  		else if (( blueS4 > blueS3)&& (blueS4 > 50))
+  		{
+  			setMotor( 0, 10, false,true);
+  			nxtDisplayTextLine(2, "Rechts!!");
+  		}
+  	else if ((blueS1 < 45)&& (blueS2 < 45)&& (blueS3 < 45)&& (blueS4 < 45))
+  	{
+  		setMotor(0,0,false,false);
+  		playImmediateTone(500,10);
+  	}
+  	else 
+  	{
+  		  setMotor(0, 17, false,false);
+  			nxtDisplayTextLine(2, "Rechtdoor!!");
+  		}
+//	}
+
+   /* nxtDisplayCenteredTextLine(0, "Color: %d", _color);
+    nxtDisplayCenteredBigTextLine(1, "R  G  B");
+
+    nxtEraseRect(0,10, 99, 41);
+    nxtFillRect( 0, 10, 30, 10 + (red+1)/8);
+    nxtFillRect(35, 10, 65, 10 + (green+1)/8);
+    nxtFillRect(70, 10, 99, 10 + (blue+1)/8);*/
+    StringFormat(_tmp, "%3d %3d %3d", blueS1, blueS2,blueS3);
+    nxtDisplayTextLine(7, "%s %3d", _tmp, blueS4);
+			wait1Msec(1);
+		
 }
