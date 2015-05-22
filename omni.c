@@ -22,19 +22,58 @@
 #include "drivers/hitechnic-irseeker-v2.h"
 #include "drivers/hitechnic-colour-v2.h"
 
+#define NORM (2)
+#define ROTCW (1)
+#define ROTCCW (3)
+
+
 const tMUXSensor ColorSensor1 = msensor_S4_1;
 const tMUXSensor ColorSensor2 = msensor_S4_2;
 const tMUXSensor ColorSensor3 = msensor_S4_3;
 const tMUXSensor ColorSensor4 = msensor_S4_4;
 void displayText(int nLineNumber, const string cChar, int nValueDC, int nValueAC);
 bool goToBeacon();
-bool followLine();
+bool followLine(int *state);
 
 //Globale variabele
 float currHeading;
 string sTextLines[8];
 //De afwijking van de gyro sensor
 int offset = 598;
+
+
+int getState(int state, int S1, int S2, int S3, int S4, int threshold) {
+	switch(state) {
+		case NORM: {
+			// If left sensor hits, goto state to turn C. Clockwise
+			if (S1 < threshold) {
+				return ROTCW;
+			}
+			// If right sensor hits, goto state to turn Clockwise
+			if (S4 < threshold) {
+				return ROTCCW;
+			}
+			return NORM;
+		} break;
+		case ROTCW: {
+			// If the sensor hits, turned enough
+			if (S2 < threshold) {
+				return NORM; // State 2
+			}
+			return ROTCW;
+		} break;
+		case ROTCCW: {
+			// If the sensor hits, turned enough
+			if (S3 < threshold) {
+				return NORM; // State 2
+			}
+			return ROTCCW;
+		}break;
+		
+	}
+	return NORM;
+}
+
 
 task getHeading()
 {
@@ -66,6 +105,12 @@ task getHeading()
 
 task main()
 {
+
+	int state;
+	
+	
+
+
   stopTask(displayDiagnostics);
 	eraseDisplay();
 	startTask(getHeading);
@@ -74,7 +119,7 @@ task main()
 		getJoystickSettings(joystick);
 		float rate = currHeading;
 
-		
+			state = NORM;
 		
 		setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
 		if (joy1Btn(1))
@@ -85,7 +130,7 @@ task main()
 
 		while(1)
 		{
-			followLine();
+			followLine(&state);
 		}
 	}
 }
@@ -140,7 +185,7 @@ bool goToBeacon()
 	return returnValue;
 }
 
-bool followLine()
+bool followLine(int *state)
 {
 	// In Robot = -------S1-S2-S3-S4---------
 	int red = 0;
@@ -185,11 +230,35 @@ bool followLine()
       wait1Msec(2000);
       StopAllTasks();
   		}
+  		
+  		blueS1 = 255 - blueS1;
+  		blueS2 = 255 - blueS2;
+  		blueS3 = 255 - blueS3;
+  		blueS4 = 255 - blueS4;
+  		
+  	*state = getState(*state, blueS1,blueS2,blueS3,blueS4, 201);
+  		
+  switch(*state) {
+		case NORM: {
+			setMotor(0,17,false,false);
+		} break;
+		case ROTCW: {
+		setMotor(0,9,true,false);	
+		} break;
+		case ROTCCW: {
+			setMotor(0,9,false,true);
+		} break;
+	}
+
+  		
   //Blue line in not in middle of sensor
  // if (( blueS1 || blueS4) > ((blueS2 || blueS3))
   //{
   //	if ((blueS2 && blueS3) > (blueS1 || blueS4))
   	//{
+  		
+  		
+  		/* 
   		if ((blueS1 > blueS2) && (blueS1 > 50))
   		{
   			setMotor(0, 10, true,false);
@@ -210,7 +279,7 @@ bool followLine()
   		  setMotor(0, 17, false,false);
   			nxtDisplayTextLine(2, "Rechtdoor!!");
   		}
-//	}
+//	}*/
 
    /* nxtDisplayCenteredTextLine(0, "Color: %d", _color);
     nxtDisplayCenteredBigTextLine(1, "R  G  B");
@@ -221,6 +290,9 @@ bool followLine()
     nxtFillRect(70, 10, 99, 10 + (blue+1)/8);*/
     StringFormat(_tmp, "%3d %3d %3d", blueS1, blueS2,blueS3);
     nxtDisplayTextLine(7, "%s %3d", _tmp, blueS4);
+    nxtDisplayBigTextLine(1,"State %d", *state)
 			wait1Msec(1);
-		
+			
+			
+		return true;
 }
