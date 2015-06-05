@@ -69,7 +69,7 @@ int getState(int state, int S1, int S2, int S3, int S4, int threshold) {
 			}
 			return ROTCCW;
 		}break;
-		
+
 	}
 	return NORM;
 }
@@ -107,8 +107,9 @@ task main()
 {
 
 	int state;
-	
-	
+	bool variablebtn = true;
+	bool releasebtn = true;
+	bool switching = true;
 
 
   stopTask(displayDiagnostics);
@@ -116,21 +117,43 @@ task main()
 	startTask(getHeading);
 	while (true)
 	{
-		getJoystickSettings(joystick);
-		float rate = currHeading;
-
-			state = NORM;
-		
-		setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
-		if (joy1Btn(1))
-		{
-			currHeading = 0;
-			playImmediateTone(1750, 1);
-		}
+		state = NORM;
 
 		while(1)
 		{
-			followLine(&state);
+			getJoystickSettings(joystick);
+					// Control the brush
+		if(joy1Btn(3) && releasebtn){
+			if(switching){
+				switching = false;
+				variablebtn = false;
+			}else{
+				switching = true;
+				variablebtn = true;
+			}
+			releasebtn = false;
+		}
+		if(!joy1Btn(3) && !releasebtn) releasebtn = true;
+
+
+			if(variablebtn == true)
+			{
+				followLine(&state);
+				displayCenteredTextLine(1, "Line");
+
+			}
+			else{
+				displayCenteredTextLine(1, "joystick");
+
+				float rate = currHeading;
+				setMotor(getJoystickAngle(joystick.joy1_x1, joystick.joy1_y1,rate), getJoystickSpeed(joystick.joy1_y2,joy1Btn(6)), joy1Btn(7),joy1Btn(8));
+				if (joy1Btn(1))
+				{
+					currHeading = 0;
+					playImmediateTone(1750, 1);
+				}
+			}
+
 		}
 	}
 }
@@ -199,7 +222,7 @@ bool followLine(int *state)
  	int _colorS3 = 0;
  	int _colorS4 = 0;
   string _tmp;
-  
+
   _colorS1 = HTCS2readColor(ColorSensor1);
   _colorS2 = HTCS2readColor(ColorSensor2);
   _colorS3 = HTCS2readColor(ColorSensor3);
@@ -230,35 +253,35 @@ bool followLine(int *state)
       wait1Msec(2000);
       StopAllTasks();
   		}
-  		
+
   		blueS1 = 255 - blueS1;
   		blueS2 = 255 - blueS2;
   		blueS3 = 255 - blueS3;
   		blueS4 = 255 - blueS4;
-  		
+
   	*state = getState(*state, blueS1,blueS2,blueS3,blueS4, 201);
-  		
+
   switch(*state) {
 		case NORM: {
 			setMotor(0,17,false,false);
 		} break;
 		case ROTCW: {
-		setMotor(0,9,true,false);	
+		setMotor(0,9,true,false);
 		} break;
 		case ROTCCW: {
 			setMotor(0,9,false,true);
 		} break;
 	}
 
-  		
+
   //Blue line in not in middle of sensor
  // if (( blueS1 || blueS4) > ((blueS2 || blueS3))
   //{
   //	if ((blueS2 && blueS3) > (blueS1 || blueS4))
   	//{
-  		
-  		
-  		/* 
+
+
+  		/*
   		if ((blueS1 > blueS2) && (blueS1 > 50))
   		{
   			setMotor(0, 10, true,false);
@@ -274,7 +297,7 @@ bool followLine(int *state)
   		setMotor(0,0,false,false);
   		playImmediateTone(500,10);
   	}
-  	else 
+  	else
   	{
   		  setMotor(0, 17, false,false);
   			nxtDisplayTextLine(2, "Rechtdoor!!");
@@ -292,7 +315,7 @@ bool followLine(int *state)
     nxtDisplayTextLine(7, "%s %3d", _tmp, blueS4);
     nxtDisplayBigTextLine(1,"State %d", *state)
 			wait1Msec(1);
-			
-			
+
+
 		return true;
 }
